@@ -1,1 +1,746 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pixel Bowling Ball Animator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%234a6aff'/><circle cx='6' cy='5' r='1' fill='%23000'/><circle cx='10' cy='5' r='1' fill='%23000'/><circle cx='8' cy='7' r='1' fill='%23000'/></svg>">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0b0c12;
+  --surface: #14151f;
+  --surface-2: #1c1e2c;
+  --border: #2a2d3d;
+  --border-bright: #3d4159;
+  --text: #e8e9f1;
+  --text-dim: #8a8da3;
+  --text-faint: #5a5d75;
+  --accent: #5d7fff;
+  --accent-hover: #7595ff;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 32px 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.container { max-width: 980px; margin: 0 auto; }
+
+h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .main-grid { grid-template-columns: 1fr; }
+}
+
+.preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.preview-canvas {
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-color: #0a0b10;
+  background-image:
+    linear-gradient(45deg, #15171f 25%, transparent 25%),
+    linear-gradient(-45deg, #15171f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #15171f 75%),
+    linear-gradient(-45deg, transparent 75%, #15171f 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.frame-meta {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s, border-color 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button:hover {
+  background: var(--border);
+  border-color: var(--border-bright);
+}
+
+button:active { transform: translateY(1px); }
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+button.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
+.swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  background: #0a0b10;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+.swatch:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-1px);
+}
+
+.swatch.active { border-color: var(--text); }
+
+.swatch canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: block;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.section-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.frames-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .frames-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.frame-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.frame-canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background-color: #0a0b10;
+  background-image:
+    linear-gradient(45deg, #15171f 25%, transparent 25%),
+    linear-gradient(-45deg, #15171f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #15171f 75%),
+    linear-gradient(-45deg, transparent 75%, #15171f 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.frame-num {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+.footer {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Pixel bowling ball animator</h1>
+  <div class="subtitle">32×32 sprite · 8 frames · per-pixel lit sphere with procedural surface designs</div>
+
+  <div class="panel main-grid">
+    <div class="preview-wrap">
+      <canvas id="preview" class="preview-canvas" width="32" height="32"></canvas>
+      <div class="frame-meta" id="frameMeta">FRAME 0 / 7</div>
+      <button id="playBtn" class="primary">
+        <svg class="icon" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+        Pause
+      </button>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <div class="label-row">
+          <span class="label">Animation speed</span>
+          <span class="value"><span id="fpsLabel">8</span> fps</span>
+        </div>
+        <input type="range" id="fpsSlider" min="1" max="24" value="8" step="1">
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span class="label">Ball style</span>
+          <span class="value" id="paletteName">Cosmic</span>
+        </div>
+        <div id="palette" class="swatches"></div>
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span class="label">Export</span>
+        </div>
+        <div class="button-row">
+          <button id="exportSheet">
+            <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+            Sprite sheet (256×32)
+          </button>
+          <button id="exportFrames">
+            <svg class="icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+            All 8 frames
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-header">
+      <span class="section-title">All frames</span>
+      <span class="section-hint">Sprite sheet order, left to right</span>
+    </div>
+    <div id="framesGrid" class="frames-grid"></div>
+  </div>
+
+  <div class="footer">All sprites generated procedurally on render · 32×32 native, pixelated upscale</div>
+</div>
+
+<script>
+// ============================================================================
+// Configuration
+// ============================================================================
+const SIZE = 32;
+const FRAMES = 8;
+const RADIUS = 14;
+const HOLE_ANGULAR_RADIUS = 0.22;
+const HOLE_COS_RADIUS = Math.cos(HOLE_ANGULAR_RADIUS);
+const HOLE_EDGE_SOFTNESS = 0.06;
+
+const LIGHT = (() => {
+  const v = [-0.55, -0.65, 0.55];
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return [v[0]/l, v[1]/l, v[2]/l];
+})();
+const VIEW = [0, 0, 1];
+const HALF = (() => {
+  const v = [LIGHT[0] + VIEW[0], LIGHT[1] + VIEW[1], LIGHT[2] + VIEW[2]];
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return [v[0]/l, v[1]/l, v[2]/l];
+})();
+
+// Three finger holes in skin (object) space — triangle layout
+const HOLES = [
+  [ 0.00, -0.55, 0.84],
+  [-0.32, -0.10, 0.94],
+  [ 0.30,  0.12, 0.95]
+].map(v => {
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return [v[0]/l, v[1]/l, v[2]/l];
+});
+
+// ============================================================================
+// Styles — each combines a two-tone palette with a procedural surface pattern.
+// Patterns are sampled in object (skin) space so the design rolls with the ball.
+// ============================================================================
+const STYLES = [
+  { name: 'Cosmic',  pattern: 'swirl',   colorA: [70, 95, 235],   colorB: [95, 50, 175],  shadow: [15, 18, 70],   highlight: [220, 220, 255], hole: [8, 6, 18]  },
+  { name: 'Inferno', pattern: 'flame',   colorA: [255, 200, 40],  colorB: [220, 40, 30],  shadow: [90, 15, 5],    highlight: [255, 245, 200], hole: [25, 6, 4]  },
+  { name: 'Toxic',   pattern: 'stripes', colorA: [200, 240, 60],  colorB: [40, 170, 80],  shadow: [20, 60, 25],   highlight: [245, 255, 200], hole: [8, 22, 8]  },
+  { name: 'Vapor',   pattern: 'diag',    colorA: [255, 110, 200], colorB: [90, 210, 240], shadow: [70, 30, 110],  highlight: [255, 235, 255], hole: [25, 8, 28] },
+  { name: 'Galaxy',  pattern: 'stars',   colorA: [40, 30, 90],    colorB: [110, 60, 170], shadow: [8, 5, 28],     highlight: [220, 200, 255], hole: [3, 3, 8]   },
+  { name: 'Ember',   pattern: 'marble',  colorA: [255, 130, 30],  colorB: [180, 30, 30],  shadow: [80, 20, 5],    highlight: [255, 230, 180], hole: [22, 8, 4]  }
+];
+
+// ============================================================================
+// State
+// ============================================================================
+let styleIdx = 0;
+let currentFrame = 0;
+let isPlaying = true;
+let fps = 8;
+let lastFrameTime = performance.now();
+let frameImageData = [];
+
+// ============================================================================
+// Math helpers
+// ============================================================================
+function rotateX(v, a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return [v[0], v[1]*c - v[2]*s, v[1]*s + v[2]*c];
+}
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// Cheap deterministic hash → [0, 1) — used for star fields
+function hash3(x, y, z) {
+  let h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  h = h - Math.floor(h);
+  return h;
+}
+
+// ============================================================================
+// Surface pattern sampler
+// Given a skin-space point on the unit sphere, return [r,g,b] base color.
+// ============================================================================
+function sampleSurface(sx, sy, sz, style) {
+  const a = style.colorA, b = style.colorB;
+  let t = 0;
+  let starColor = null;
+
+  switch (style.pattern) {
+    case 'swirl': {
+      // Wavy horizontal band — top color above, bottom color below
+      const waveY = sy - 0.05 + 0.22 * Math.sin(sx * 4.5 + 0.7);
+      t = waveY * 3.5 + 0.5;
+      break;
+    }
+    case 'flame': {
+      // Two layered sines for a tongue-of-flame swirl
+      const w = sy + 0.18 * Math.sin(sx * 5.5) + 0.12 * Math.sin(sz * 6 + 1.3);
+      t = w * 3 + 0.5;
+      break;
+    }
+    case 'stripes': {
+      // Latitude bands with hard-ish edges
+      const s = Math.sin(sy * 9 + sx * 0.6);
+      t = s > 0.15 ? 1 : s < -0.15 ? 0 : (s + 0.15) / 0.3;
+      break;
+    }
+    case 'diag': {
+      // Diagonal vaporwave stripes across X+Y
+      const s = Math.sin((sy + sx) * 8.5);
+      t = s > 0.1 ? 1 : s < -0.1 ? 0 : (s + 0.1) / 0.2;
+      break;
+    }
+    case 'stars': {
+      // Grid-cell hash → sparse bright dots over a soft gradient
+      const gx = Math.floor((sx + 1) * 12);
+      const gy = Math.floor((sy + 1) * 12);
+      const gz = Math.floor((sz + 1) * 12);
+      const h = hash3(gx, gy, gz);
+      if (h > 0.93) {
+        const bright = h > 0.97 ? 1 : 0.7;
+        starColor = [240 * bright + 30, 230 * bright + 25, 255 * bright];
+      }
+      t = sy * 1.8 + 0.5;
+      break;
+    }
+    case 'marble': {
+      // Three-octave sin/cos mix for blobby marble veining
+      const n = Math.sin(sx * 5 + sz * 3)
+              + Math.cos(sy * 6 + sz * 4) * 0.7
+              + Math.sin((sx + sy) * 8.5) * 0.45;
+      t = n * 0.32 + 0.5;
+      break;
+    }
+  }
+
+  if (starColor) return starColor;
+  t = clamp(t, 0, 1);
+  return [
+    a[0] * (1 - t) + b[0] * t,
+    a[1] * (1 - t) + b[1] * t,
+    a[2] * (1 - t) + b[2] * t
+  ];
+}
+
+// ============================================================================
+// Per-frame renderer
+// ============================================================================
+function renderFrame(frameIdx, style) {
+  const img = new ImageData(SIZE, SIZE);
+  const data = img.data;
+  const center = SIZE / 2;
+
+  // Forward roll: rotate around the screen-X axis.
+  const angle = -(frameIdx / FRAMES) * Math.PI * 2;
+  const invAngle = -angle;  // un-rotate screen normal back to skin space
+  const rotatedHoles = HOLES.map(h => rotateX(h, angle));
+
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const dx = (x + 0.5) - center;
+      const dy = (y + 0.5) - center;
+      const d  = Math.hypot(dx, dy);
+
+      // Silhouette alpha — 1px feather
+      let alpha;
+      if (d <= RADIUS - 0.5)       alpha = 1;
+      else if (d <  RADIUS + 0.5)  alpha = (RADIUS + 0.5 - d);
+      else                         alpha = 0;
+
+      const idx = (y * SIZE + x) * 4;
+      if (alpha <= 0) { data[idx+3] = 0; continue; }
+
+      // Screen-space surface normal
+      let nx = dx / RADIUS;
+      let ny = dy / RADIUS;
+      const len2 = nx*nx + ny*ny;
+      if (len2 > 1) { const l = Math.sqrt(len2); nx /= l; ny /= l; }
+      const nz = Math.sqrt(Math.max(0, 1 - nx*nx - ny*ny));
+
+      // Un-rotate to skin-space so the pattern stays "painted on"
+      const skin = rotateX([nx, ny, nz], invAngle);
+      const baseColor = sampleSurface(skin[0], skin[1], skin[2], style);
+
+      // Lighting (ambient + diffuse + Blinn-Phong specular)
+      const diff = Math.max(0, nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2]);
+      const sBase = Math.max(0, nx*HALF[0] + ny*HALF[1] + nz*HALF[2]);
+      const spec = Math.pow(sBase, 26);
+
+      const ambient = 0.20;
+      const diffStrength = 0.80;
+      const specStrength = 0.95;
+
+      let r = style.shadow[0]*ambient + baseColor[0]*diff*diffStrength + style.highlight[0]*spec*specStrength;
+      let g = style.shadow[1]*ambient + baseColor[1]*diff*diffStrength + style.highlight[1]*spec*specStrength;
+      let b = style.shadow[2]*ambient + baseColor[2]*diff*diffStrength + style.highlight[2]*spec*specStrength;
+
+      // Rim darkening
+      const rim = 1 - Math.pow(1 - nz, 2.5) * 0.35;
+      r *= rim; g *= rim; b *= rim;
+
+      // Finger holes — three skin-space cones rotated to current frame
+      for (let h = 0; h < rotatedHoles.length; h++) {
+        const hv = rotatedHoles[h];
+        if (hv[2] <= 0.02) continue;
+        const cosA = nx*hv[0] + ny*hv[1] + nz*hv[2];
+        if (cosA <= HOLE_COS_RADIUS) continue;
+
+        const ang = Math.acos(Math.min(1, cosA));
+        let t = ang > HOLE_ANGULAR_RADIUS - HOLE_EDGE_SOFTNESS
+          ? (HOLE_ANGULAR_RADIUS - ang) / HOLE_EDGE_SOFTNESS
+          : 1;
+        t = clamp(t, 0, 1);
+        const depth = clamp((hv[2] - 0.05) / 0.95, 0, 1);
+        t *= depth;
+        const inner = 1 - (ang / HOLE_ANGULAR_RADIUS) * 0.4;
+        const hr = style.hole[0] * inner;
+        const hg = style.hole[1] * inner;
+        const hb = style.hole[2] * inner;
+        r = r*(1-t) + hr*t;
+        g = g*(1-t) + hg*t;
+        b = b*(1-t) + hb*t;
+      }
+
+      data[idx]   = clamp(Math.round(r), 0, 255);
+      data[idx+1] = clamp(Math.round(g), 0, 255);
+      data[idx+2] = clamp(Math.round(b), 0, 255);
+      data[idx+3] = Math.round(alpha * 255);
+    }
+  }
+  return img;
+}
+
+function renderAllFrames() {
+  const style = STYLES[styleIdx];
+  frameImageData = [];
+  for (let f = 0; f < FRAMES; f++) frameImageData.push(renderFrame(f, style));
+}
+
+// ============================================================================
+// Drawing
+// ============================================================================
+function drawPreview() {
+  const c = document.getElementById('preview');
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, SIZE, SIZE);
+  ctx.putImageData(frameImageData[currentFrame], 0, 0);
+  document.getElementById('frameMeta').textContent = 'FRAME ' + currentFrame + ' / ' + (FRAMES - 1);
+}
+
+function drawFramesGrid() {
+  const grid = document.getElementById('framesGrid');
+  grid.innerHTML = '';
+  for (let f = 0; f < FRAMES; f++) {
+    const cell = document.createElement('div');
+    cell.className = 'frame-cell';
+    const c = document.createElement('canvas');
+    c.className = 'frame-canvas';
+    c.width = SIZE; c.height = SIZE;
+    c.getContext('2d').putImageData(frameImageData[f], 0, 0);
+    const lbl = document.createElement('div');
+    lbl.className = 'frame-num';
+    lbl.textContent = '#' + f;
+    cell.appendChild(c);
+    cell.appendChild(lbl);
+    grid.appendChild(cell);
+  }
+}
+
+// ============================================================================
+// Style picker — each swatch renders a live preview of its style at frame 0
+// ============================================================================
+function buildPalette() {
+  const wrap = document.getElementById('palette');
+  wrap.innerHTML = '';
+  STYLES.forEach((style, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (i === styleIdx ? ' active' : '');
+    sw.title = style.name;
+    const c = document.createElement('canvas');
+    c.width = SIZE; c.height = SIZE;
+    c.getContext('2d').putImageData(renderFrame(0, style), 0, 0);
+    sw.appendChild(c);
+    sw.addEventListener('click', () => {
+      styleIdx = i;
+      document.getElementById('paletteName').textContent = style.name;
+      renderAllFrames();
+      drawPreview();
+      drawFramesGrid();
+      buildPalette();
+    });
+    wrap.appendChild(sw);
+  });
+}
+
+// ============================================================================
+// Animation loop
+// ============================================================================
+function tick(now) {
+  if (isPlaying) {
+    const interval = 1000 / fps;
+    if (now - lastFrameTime >= interval) {
+      currentFrame = (currentFrame + 1) % FRAMES;
+      drawPreview();
+      lastFrameTime = now;
+    }
+  } else {
+    lastFrameTime = now;
+  }
+  requestAnimationFrame(tick);
+}
+
+// ============================================================================
+// Export
+// ============================================================================
+function exportSpriteSheet() {
+  const canvas = document.createElement('canvas');
+  canvas.width = SIZE * FRAMES;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+  for (let f = 0; f < FRAMES; f++) {
+    const tmp = document.createElement('canvas');
+    tmp.width = SIZE; tmp.height = SIZE;
+    tmp.getContext('2d').putImageData(frameImageData[f], 0, 0);
+    ctx.drawImage(tmp, f * SIZE, 0);
+  }
+  const styleName = STYLES[styleIdx].name.toLowerCase();
+  canvas.toBlob(blob => triggerDownload(blob, 'bowling_ball_' + styleName + '_spritesheet.png'));
+}
+
+function exportIndividualFrames() {
+  const styleName = STYLES[styleIdx].name.toLowerCase();
+  for (let f = 0; f < FRAMES; f++) {
+    const tmp = document.createElement('canvas');
+    tmp.width = SIZE; tmp.height = SIZE;
+    tmp.getContext('2d').putImageData(frameImageData[f], 0, 0);
+    ((frame, c) => setTimeout(() => {
+      c.toBlob(blob => triggerDownload(blob, 'bowling_ball_' + styleName + '_frame' + frame + '.png'));
+    }, frame * 250))(f, tmp);
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+// ============================================================================
+// Event bindings
+// ============================================================================
+document.getElementById('playBtn').addEventListener('click', (e) => {
+  isPlaying = !isPlaying;
+  const btn = e.currentTarget;
+  if (isPlaying) {
+    btn.innerHTML = '<svg class="icon" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>Pause';
+  } else {
+    btn.innerHTML = '<svg class="icon" fill="currentColor" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>Play';
+  }
+});
+
+document.getElementById('fpsSlider').addEventListener('input', (e) => {
+  fps = parseInt(e.target.value, 10);
+  document.getElementById('fpsLabel').textContent = fps;
+});
+
+document.getElementById('exportSheet').addEventListener('click', exportSpriteSheet);
+document.getElementById('exportFrames').addEventListener('click', exportIndividualFrames);
+
+// ============================================================================
+// Boot
+// ============================================================================
+buildPalette();
+renderAllFrames();
+drawPreview();
+drawFramesGrid();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
