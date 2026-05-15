@@ -1,6 +1,6 @@
 # q5play-template
 
-Visit <https://q5play.org> to learn how to use q5play.
+Visit <0> to learn how to use q5play.
 
 This folder contains a basic template to help get you started on your own q5play project! 😃🎮
 

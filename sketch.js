@@ -1,25 +1,31 @@
 await Canvas();
-world.gravity.y = 10;
+//world.gravity.y = 50;
 
 let ball = new Sprite();
-ball.diameter = 50;
-ball.img = '🤪';
+let alley = await loadImage('Images/New Piskel.png');
 
-let groundA = new Sprite();
-groundA.x = -120;
-groundA.width = 220;
-groundA.rotation = 30;
-groundA.physics = STATIC;
 
-let groundB = new Sprite();
-groundB.x = 120;
-groundB.width = 220;
-groundB.rotation = -30;
-groundB.physics = STATIC;
+
+// Replace ball.img with ball.addAni to slice the spritesheet
+let rolling = ball.addAni('Sprites/bowling_ball_cosmic_spritesheet.png', { 
+    width: 32, 
+    height: 32, 
+    frames: 8 
+});
+
+rolling.frameDelay = 8;
+// Force the animation sequence to run over and over
 
 q5.update = function () {
-	background('skyblue');
-	text('click to jump!', 0, -50);
+    background(0); 
+    image(alley, 0, 0, width, height, 0, 0, alley.width, alley.height, COVER);
 
-	if (mouse.presses()) ball.vel.y = -5;
+    text('click to jump!', 0, -50);
+    if (mouse.presses()) ball.vel.y = -5;
+
+    
 };
+
+function draw(){
+  rolling.ani.nextFrame();
+}
