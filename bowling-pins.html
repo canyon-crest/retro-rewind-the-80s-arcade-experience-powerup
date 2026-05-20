@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Top-Down Bowling Pins — 24 Angles × 8 Frames</title>
+<style>
+  :root {
+    --bg: #1a1410;
+    --panel: #2a201a;
+    --panel-2: #3d2f24;
+    --ink: #f3e8d8;
+    --muted: #a89880;
+    --accent: #d94545;
+    --code-bg: #0d0907;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 22px;
+    letter-spacing: 2px;
+    margin: 0 0 4px;
+    text-transform: uppercase;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+  .section {
+    background: var(--panel);
+    border: 2px solid var(--panel-2);
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  .section h2 {
+    margin: 0 0 14px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    border-bottom: 1px dashed #4a3a2c;
+    padding-bottom: 6px;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  canvas.pin {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #0d0907;
+    border: 1px solid var(--panel-2);
+  }
+  canvas.pin.s64 { width: 64px;  height: 64px; }
+  canvas.pin.s96 { width: 96px;  height: 96px; }
+  canvas.pin.s48 { width: 48px;  height: 48px; }
+  canvas.pin.s40 { width: 40px;  height: 40px; }
+
+  .sprite {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .sprite .label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* Compass layout */
+  .compass {
+    position: relative;
+    width: 520px;
+    height: 520px;
+    margin: 0 auto;
+    max-width: 100%;
+  }
+  .compass-center {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .compass-item {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .compass-item canvas {
+    image-rendering: pixelated;
+    background: #0d0907;
+    border: 1px solid var(--panel-2);
+    width: 48px; height: 48px;
+  }
+  .compass-item .deg {
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  /* Matrix layout */
+  .matrix-wrap {
+    max-height: 540px;
+    overflow: auto;
+    border: 1px solid var(--panel-2);
+    background: #0d0907;
+    padding: 8px;
+  }
+  .matrix-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .matrix-row .deg-label {
+    width: 48px;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    padding-right: 4px;
+  }
+  .matrix-row canvas {
+    image-rendering: pixelated;
+    background: #1a1410;
+    border: 1px solid #2a201a;
+    width: 40px; height: 40px;
+  }
+
+  /* Lane demo */
+  .lane {
+    position: relative;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        #3d2a18 0px,
+        #3d2a18 3px,
+        #4a3220 3px,
+        #4a3220 6px
+      );
+    border: 2px solid #1a0d08;
+    border-radius: 6px;
+    height: 360px;
+    overflow: hidden;
+    cursor: crosshair;
+    user-select: none;
+  }
+  .lane-pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+  }
+  .lane-pin canvas {
+    image-rendering: pixelated;
+    width: 64px; height: 64px;
+    display: block;
+  }
+  .lane-hud {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(0,0,0,0.55);
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+  .lane-help {
+    position: absolute;
+    bottom: 8px; right: 8px;
+    background: rgba(0,0,0,0.55);
+    padding: 6px 10px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-right: 6px;
+    margin-top: 10px;
+  }
+  button.alt { background: #4a3a2c; }
+  button:hover { filter: brightness(1.1); }
+
+  pre {
+    background: var(--code-bg);
+    color: #c8d8b8;
+    padding: 14px;
+    overflow: auto;
+    font-size: 11px;
+    line-height: 1.5;
+    border: 1px solid var(--panel-2);
+    margin: 0;
+  }
+  .legend {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 16px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .kv b { color: var(--ink); font-weight: normal; }
+
+  .strip-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  input[type=range] { width: 240px; }
+</style>
+</head>
+<body>
+
+<h1>Top-Down Bowling Pins</h1>
+<div class="sub">32×32 sprites · 24 fall angles (every 15°) · 8 frames each · physics-ready API</div>
+
+<!-- ============ IDLE ============ -->
+<div class="section">
+  <h2>Idle State</h2>
+  <div class="row" id="idleRow"></div>
+  <div class="legend">Frame 0 is direction-agnostic — same sprite regardless of angle.</div>
+</div>
+
+<!-- ============ ANGLE COMPASS ============ -->
+<div class="section">
+  <h2>Angle Compass — 24 Directions × Final Frame</h2>
+  <div class="compass" id="compass">
+    <div class="compass-center">
+      0° = NORTH<br>
+      clockwise<br>
+      step 15°
+    </div>
+  </div>
+  <div class="legend">Each pin shows the fully fallen frame (F7) in its angle's fall direction.</div>
+</div>
+
+<!-- ============ FRAME STRIP ============ -->
+<div class="section">
+  <h2>Frame Strip — Pick an Angle</h2>
+  <div class="strip-controls">
+    <label>ANGLE</label>
+    <input id="angleSlider" type="range" min="0" max="23" value="6">
+    <span id="angleValue">90°</span>
+    <span style="margin-left:auto">DIR <span id="angleDir">(1.00, 0.00)</span></span>
+  </div>
+  <div class="row" id="stripRow"></div>
+  <div class="legend">Each frame is its own 32×32 canvas. F0 upright → F7 fully fallen.</div>
+</div>
+
+<!-- ============ FULL MATRIX ============ -->
+<div class="section">
+  <h2>Full Matrix — All 24 × 8 = 192 Frames</h2>
+  <div class="matrix-wrap" id="matrix"></div>
+  <div class="legend">Scrollable. Rows = angle (0°–345°), columns = frame (F0–F7).</div>
+</div>
+
+<!-- ============ INTERACTIVE LANE ============ -->
+<div class="section">
+  <h2>Interactive — Click to Strike</h2>
+  <div class="lane" id="lane">
+    <div class="lane-hud" id="laneHud">click anywhere · pin falls AWAY from click</div>
+    <div class="lane-help">double-click to reset</div>
+  </div>
+  <button id="randomStrike">Random Strike</button>
+  <button class="alt" id="resetLane">Reset Pins</button>
+  <div class="legend">Each pin runs independently. The pin computes the impact vector, snaps to the nearest 15°, and plays that angle's animation.</div>
+</div>
+
+<!-- ============ API ============ -->
+<div class="section">
+  <h2>Physics API — window.BowlingPins</h2>
+<pre>// All sprite data is precomputed and exposed:
+BowlingPins.ANGLE_STEP    // 15
+BowlingPins.ANGLE_COUNT   // 24
+BowlingPins.FRAME_COUNT   // 8
+BowlingPins.FALL_DURATION // 420 (ms, suggested)
+
+// Per-angle metadata + sprites:
+BowlingPins.ANGLES[i] = {
+  index:    0..23,
+  degrees:  0, 15, 30, ... 345,    // clockwise from NORTH
+  radians:  0 .. ~6.02,
+  direction:{ x, y },              // unit vector in screen space (+y = down)
+  frames:   [HTMLCanvasElement x 8] // F0 = upright, F7 = fallen
+}
+
+// Utility functions:
+BowlingPins.angleFromVector(dx, dy)   // → degrees [0, 360)
+BowlingPins.nearestAngleIndex(deg)    // → 0..23
+BowlingPins.getIdleSprite()           // → HTMLCanvasElement (F0)
+
+// Pin factory — drop one into your game:
+const pin = BowlingPins.createPin();  // { canvas, knock, reset, update, state }
+container.appendChild(pin.canvas);
+
+pin.knock(impactDx, impactDy);        // pin will fall AWAY from impact vector
+// or: pin.knockAngle(degrees);
+// or: pin.knockIndex(0..23);
+
+// In your game loop:
+function tick(now) {
+  pin.update(now);                    // advances animation
+  requestAnimationFrame(tick);
+}
+
+pin.reset();                          // back to idle</pre>
+</div>
+
+<script>
+// ============================================================
+// PALETTE
+// ============================================================
+const C = {
+  outline:    '#1a0d08',
+  shadow:     '#2a1810',
+  pinDark:    '#c8b8a0',
+  pinMid:     '#e8dcc4',
+  pinLight:   '#ffffff',
+  redDark:    '#8a1a1a',
+  redMid:     '#c92020',
+  redLight:   '#e84545',
+};
+
+// ============================================================
+// LOW-LEVEL PIXEL HELPERS
+// ============================================================
+function makeCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+function px(ctx, x, y, color) {
+  if (!color) return;
+  if (x < 0 || x >= 32 || y < 0 || y >= 32) return;
+  ctx.fillStyle = color;
+  ctx.fillRect(x | 0, y | 0, 1, 1);
+}
+
+// Axis-aligned filled ellipse — for upright (circular) frame.
+function fillEllipse(ctx, cx, cy, rx, ry, color) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      const dx = (x + 0.5 - cx) / rx;
+      const dy = (y + 0.5 - cy) / ry;
+      if (dx*dx + dy*dy <= 1) px(ctx, x, y, color);
+    }
+  }
+}
+
+// Oriented filled ellipse (major axis along given direction unit vector).
+// dirX/dirY = "head" direction; perpX/perpY = width direction (CW 90° from dir).
+function fillOriented(ctx, cx, cy, halfWidth, halfLength, dirX, dirY, perpX, perpY, color) {
+  const maxR = Math.max(halfWidth, halfLength) + 1;
+  const x0 = Math.max(0, Math.floor(cx - maxR));
+  const x1 = Math.min(31, Math.ceil(cx + maxR));
+  const y0 = Math.max(0, Math.floor(cy - maxR));
+  const y1 = Math.min(31, Math.ceil(cy + maxR));
+  const invW = 1 / Math.max(0.001, halfWidth);
+  const invL = 1 / Math.max(0.001, halfLength);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const rx = x + 0.5 - cx;
+      const ry = y + 0.5 - cy;
+      const u = (rx * perpX + ry * perpY) * invW;
+      const v = (rx * dirX  + ry * dirY ) * invL;
+      if (u*u + v*v <= 1) px(ctx, x, y, color);
+    }
+  }
+}
+
+// Outline pixels around an oriented ellipse — for crisp pixel-art silhouette.
+function outlineOriented(ctx, cx, cy, halfWidth, halfLength, dirX, dirY, perpX, perpY, color) {
+  const mask = new Uint8Array(32 * 32);
+  const invW = 1 / Math.max(0.001, halfWidth);
+  const invL = 1 / Math.max(0.001, halfLength);
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const rx = x + 0.5 - cx;
+      const ry = y + 0.5 - cy;
+      const u = (rx * perpX + ry * perpY) * invW;
+      const v = (rx * dirX  + ry * dirY ) * invL;
+      mask[y*32 + x] = (u*u + v*v <= 1) ? 1 : 0;
+    }
+  }
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      if (mask[y*32 + x]) continue;
+      const n = (y > 0    ? mask[(y-1)*32 + x] : 0)
+              | (y < 31   ? mask[(y+1)*32 + x] : 0)
+              | (x > 0    ? mask[y*32 + (x-1)] : 0)
+              | (x < 31   ? mask[y*32 + (x+1)] : 0);
+      if (n) px(ctx, x, y, color);
+    }
+  }
+}
+
+// ============================================================
+// FRAME DRAWING
+// ============================================================
+// Upright pin (top-down). Direction-agnostic.
+function drawIdle(ctx) {
+  ctx.clearRect(0, 0, 32, 32);
+  const cx = 16, cy = 16;
+  fillEllipse(ctx, cx + 1, cy + 1, 7, 7, C.shadow);          // shadow
+  fillEllipse(ctx, cx, cy, 7, 7, C.redDark);                 // red ring (outer)
+  fillEllipse(ctx, cx, cy, 6.5, 6.5, C.redMid);
+  fillEllipse(ctx, cx, cy, 5, 5, C.pinDark);                 // cap
+  fillEllipse(ctx, cx, cy, 4.5, 4.5, C.pinMid);
+  fillEllipse(ctx, cx, cy, 3.5, 3.5, C.pinLight);
+  px(ctx, cx - 2, cy - 2, C.pinLight);                       // tiny specular
+  px(ctx, cx - 1, cy - 2, C.pinLight);
+  px(ctx, cx - 2, cy - 1, C.pinLight);
+  // Outline around the whole circle
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      const r2 = dx*dx + dy*dy;
+      if (r2 > 49 && r2 <= 64) px(ctx, x, y, C.outline);
+    }
+  }
+}
+
+// Tipping frame at parameter t (0..1) in direction (dirX, dirY).
+// Pin pivots on its CENTER (16, 16) so it fits in 32×32 at any angle.
+function drawTipping(ctx, t, dirX, dirY) {
+  ctx.clearRect(0, 0, 32, 32);
+  const perpX = -dirY;
+  const perpY =  dirX;
+
+  const cx = 16, cy = 16;
+  const baseR   = 7;        // upright radius
+  const fullLen = 13.5;     // half-length when fully fallen
+  const fullWid = 5;        // half-width when fully fallen
+  const halfLen = baseR + (fullLen - baseR) * t;
+  const halfWid = baseR - (baseR - fullWid)   * t;
+
+  // Drop shadow: same shape, larger, offset toward bottom-right.
+  fillOriented(ctx, cx + 0.8, cy + 0.8, halfWid + 1, halfLen + 1,
+               dirX, dirY, perpX, perpY, C.shadow);
+
+  // Body — three white tones for soft pixel shading.
+  fillOriented(ctx, cx, cy, halfWid,        halfLen,        dirX, dirY, perpX, perpY, C.pinDark);
+  fillOriented(ctx, cx, cy, halfWid - 0.5,  halfLen - 0.5,  dirX, dirY, perpX, perpY, C.pinMid);
+  fillOriented(ctx, cx, cy, Math.max(0.5, halfWid - 1.5),
+                            Math.max(0.5, halfLen - 1.5),
+               dirX, dirY, perpX, perpY, C.pinLight);
+
+  // Red stripe near the "neck" — offset toward the head end.
+  if (t > 0.05) {
+    const stripeOffset = halfLen * 0.4;
+    const sCx = cx + dirX * stripeOffset;
+    const sCy = cy + dirY * stripeOffset;
+    const sHalfLen = Math.max(1.0, 1.0 + t * 1.5);
+    const sHalfWid = halfWid * (0.85 + t * 0.10);
+    fillOriented(ctx, sCx, sCy, sHalfWid,        sHalfLen,        dirX, dirY, perpX, perpY, C.redDark);
+    fillOriented(ctx, sCx, sCy, sHalfWid - 0.5,  sHalfLen - 0.3,  dirX, dirY, perpX, perpY, C.redMid);
+    if (t > 0.45) {
+      fillOriented(ctx,
+        sCx - perpX * 0.5, sCy - perpY * 0.5,
+        Math.max(0.3, sHalfWid - 1.5),
+        Math.max(0.3, sHalfLen - 1),
+        dirX, dirY, perpX, perpY, C.redLight);
+    }
+  } else {
+    // Early tip — keep the top-down ring readable.
+    fillEllipse(ctx, cx, cy, baseR - 0.3, baseR - 0.3, C.redDark);
+    fillEllipse(ctx, cx, cy, baseR - 0.8, baseR - 0.8, C.redMid);
+    fillEllipse(ctx, cx, cy, baseR - 2,   baseR - 2,   C.pinLight);
+  }
+
+  // Head bulb at the leading end (appears as the pin lays out).
+  if (t > 0.25) {
+    const bulbR = 2.5 + t * 0.6;
+    const hCx = cx + dirX * (halfLen - bulbR + 0.5);
+    const hCy = cy + dirY * (halfLen - bulbR + 0.5);
+    fillEllipse(ctx, hCx, hCy, bulbR,       bulbR,       C.pinDark);
+    fillEllipse(ctx, hCx, hCy, bulbR - 0.5, bulbR - 0.5, C.pinMid);
+    fillEllipse(ctx, hCx - 0.4, hCy - 0.4,
+                Math.max(0.3, bulbR - 1.5),
+                Math.max(0.3, bulbR - 1.5),
+                C.pinLight);
+  }
+
+  // Crisp outline.
+  outlineOriented(ctx, cx, cy, halfWid, halfLen, dirX, dirY, perpX, perpY, C.outline);
+
+  // Impact dust on final frame.
+  if (t >= 1.0) {
+    const dustOffset = halfLen + 1.5;
+    const hX = cx + dirX * dustOffset;
+    const hY = cy + dirY * dustOffset;
+    px(ctx, Math.round(hX + perpX * 1.5), Math.round(hY + perpY * 1.5), C.pinDark);
+    px(ctx, Math.round(hX - perpX * 1.5), Math.round(hY - perpY * 1.5), C.pinDark);
+    px(ctx, Math.round(hX + perpX * 2.5), Math.round(hY + perpY * 2.5), C.pinDark);
+    px(ctx, Math.round(hX - perpX * 2.5), Math.round(hY - perpY * 2.5), C.pinDark);
+  }
+}
+
+// ============================================================
+// PRECOMPUTE SPRITE DATA — 24 angles × 8 frames
+// ============================================================
+const ANGLE_STEP  = 15;
+const ANGLE_COUNT = 24;
+const FRAME_COUNT = 8;
+const FALL_DURATION = 420; // ms, suggested
+
+// Shared idle sprite (frame 0 is the same for all angles).
+const IDLE_SPRITE = makeCanvas(32, 32);
+drawIdle(IDLE_SPRITE.getContext('2d'));
+
+const ANGLES = [];
+for (let i = 0; i < ANGLE_COUNT; i++) {
+  const deg = i * ANGLE_STEP;
+  const rad = deg * Math.PI / 180;
+  // Screen-space: +x = right, +y = down. 0° = NORTH (up), clockwise.
+  const dirX = Math.sin(rad);
+  const dirY = -Math.cos(rad);
+  const frames = [];
+  for (let f = 0; f < FRAME_COUNT; f++) {
+    const c = makeCanvas(32, 32);
+    if (f === 0) {
+      c.getContext('2d').drawImage(IDLE_SPRITE, 0, 0);
+    } else {
+      const t = f / (FRAME_COUNT - 1);
+      drawTipping(c.getContext('2d'), t, dirX, dirY);
+    }
+    frames.push(c);
+  }
+  ANGLES.push({
+    index: i,
+    degrees: deg,
+    radians: rad,
+    direction: { x: dirX, y: dirY },
+    frames,
+  });
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function angleFromVector(dx, dy) {
+  // Returns degrees [0, 360), 0 = NORTH, clockwise.
+  // Convert from screen (+y down) so NORTH is -y direction.
+  let rad = Math.atan2(dx, -dy);   // 0 when dx=0, dy=-1
+  let deg = rad * 180 / Math.PI;
+  if (deg < 0) deg += 360;
+  return deg;
+}
+function nearestAngleIndex(deg) {
+  const wrapped = ((deg % 360) + 360) % 360;
+  return Math.round(wrapped / ANGLE_STEP) % ANGLE_COUNT;
+}
+function getIdleSprite() { return IDLE_SPRITE; }
+
+// ============================================================
+// PIN FACTORY — physics-friendly
+// ============================================================
+const livePins = new Set();
+
+function createPin() {
+  const canvas = makeCanvas(32, 32);
+  const ctx = canvas.getContext('2d');
+  const pin = {
+    canvas, ctx,
+    state: 'idle',           // 'idle' | 'falling' | 'fallen'
+    angleIndex: 0,
+    fallStart: 0,
+    knock(dx, dy) {
+      if (this.state !== 'idle') return;
+      // The pin falls in the direction the ball is traveling (away from impact).
+      this.angleIndex = nearestAngleIndex(angleFromVector(dx, dy));
+      this.state = 'falling';
+      this.fallStart = performance.now();
+    },
+    knockAngle(deg) {
+      if (this.state !== 'idle') return;
+      this.angleIndex = nearestAngleIndex(deg);
+      this.state = 'falling';
+      this.fallStart = performance.now();
+    },
+    knockIndex(i) {
+      if (this.state !== 'idle') return;
+      this.angleIndex = ((i % ANGLE_COUNT) + ANGLE_COUNT) % ANGLE_COUNT;
+      this.state = 'falling';
+      this.fallStart = performance.now();
+    },
+    update(now) {
+      if (this.state !== 'falling') return;
+      const t = Math.min(1, (now - this.fallStart) / FALL_DURATION);
+      const f = Math.min(FRAME_COUNT - 1, Math.round(t * (FRAME_COUNT - 1)));
+      this.drawFrame(this.angleIndex, f);
+      if (t >= 1) this.state = 'fallen';
+    },
+    drawFrame(angleIdx, frameIdx) {
+      this.ctx.clearRect(0, 0, 32, 32);
+      this.ctx.drawImage(ANGLES[angleIdx].frames[frameIdx], 0, 0);
+    },
+    reset() {
+      this.state = 'idle';
+      this.angleIndex = 0;
+      this.ctx.clearRect(0, 0, 32, 32);
+      this.ctx.drawImage(IDLE_SPRITE, 0, 0);
+    },
+  };
+  pin.reset();
+  livePins.add(pin);
+  return pin;
+}
+
+// Single shared animation loop for all live pins.
+function loop(now) {
+  for (const p of livePins) p.update(now);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ============================================================
+// EXPOSE PUBLIC API
+// ============================================================
+window.BowlingPins = {
+  ANGLE_STEP,
+  ANGLE_COUNT,
+  FRAME_COUNT,
+  FALL_DURATION,
+  ANGLES,
+  angleFromVector,
+  nearestAngleIndex,
+  getIdleSprite,
+  createPin,
+};
+
+// ============================================================
+// VISUALIZATION — Idle row
+// ============================================================
+{
+  const row = document.getElementById('idleRow');
+  for (let i = 0; i < 5; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sprite';
+    const c = makeCanvas(32, 32);
+    c.className = 'pin s96';
+    c.getContext('2d').drawImage(IDLE_SPRITE, 0, 0);
+    const lbl = document.createElement('div');
+    lbl.className = 'label';
+    lbl.textContent = 'PIN ' + (i + 1);
+    wrap.appendChild(c);
+    wrap.appendChild(lbl);
+    row.appendChild(wrap);
+  }
+}
+
+// ============================================================
+// VISUALIZATION — Angle compass
+// ============================================================
+{
+  const compass = document.getElementById('compass');
+  const cx = 260, cy = 260, R = 210;
+  for (const a of ANGLES) {
+    const x = cx + a.direction.x * R;
+    const y = cy + a.direction.y * R;
+    const item = document.createElement('div');
+    item.className = 'compass-item';
+    item.style.left = x + 'px';
+    item.style.top  = y + 'px';
+    const c = makeCanvas(32, 32);
+    c.getContext('2d').drawImage(a.frames[FRAME_COUNT - 1], 0, 0);
+    const lbl = document.createElement('div');
+    lbl.className = 'deg';
+    lbl.textContent = a.degrees + '°';
+    item.appendChild(c);
+    item.appendChild(lbl);
+    compass.appendChild(item);
+  }
+}
+
+// ============================================================
+// VISUALIZATION — Frame strip (selectable angle)
+// ============================================================
+const stripRow = document.getElementById('stripRow');
+const stripCanvases = [];
+for (let f = 0; f < FRAME_COUNT; f++) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sprite';
+  const c = makeCanvas(32, 32);
+  c.className = 'pin s64';
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = 'F' + f;
+  wrap.appendChild(c);
+  wrap.appendChild(lbl);
+  stripRow.appendChild(wrap);
+  stripCanvases.push(c);
+}
+function refreshStrip(angleIdx) {
+  const a = ANGLES[angleIdx];
+  for (let f = 0; f < FRAME_COUNT; f++) {
+    const ctx = stripCanvases[f].getContext('2d');
+    ctx.clearRect(0, 0, 32, 32);
+    ctx.drawImage(a.frames[f], 0, 0);
+  }
+  document.getElementById('angleValue').textContent = a.degrees + '°';
+  document.getElementById('angleDir').textContent =
+    '(' + a.direction.x.toFixed(2) + ', ' + a.direction.y.toFixed(2) + ')';
+}
+const slider = document.getElementById('angleSlider');
+slider.addEventListener('input', () => refreshStrip(+slider.value));
+refreshStrip(+slider.value);
+
+// ============================================================
+// VISUALIZATION — Full matrix (24 × 8)
+// ============================================================
+{
+  const matrix = document.getElementById('matrix');
+  for (const a of ANGLES) {
+    const row = document.createElement('div');
+    row.className = 'matrix-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'deg-label';
+    lbl.textContent = a.degrees + '°';
+    row.appendChild(lbl);
+    for (let f = 0; f < FRAME_COUNT; f++) {
+      const c = makeCanvas(32, 32);
+      c.getContext('2d').drawImage(a.frames[f], 0, 0);
+      row.appendChild(c);
+    }
+    matrix.appendChild(row);
+  }
+}
+
+// ============================================================
+// INTERACTIVE LANE
+// ============================================================
+{
+  const lane = document.getElementById('lane');
+  const hud  = document.getElementById('laneHud');
+
+  // Spawn a 4-row triangle of pins (bowling formation), top-down.
+  const formation = [];
+  const startX = 0.5;   // relative coords inside lane
+  const startY = 0.3;
+  const spacing = 56;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col <= row; col++) {
+      const px_ = startX * lane.clientWidth + (col - row / 2) * spacing;
+      const py_ = startY * lane.clientHeight + row * spacing * 0.85;
+      const pin = createPin();
+      const wrap = document.createElement('div');
+      wrap.className = 'lane-pin';
+      wrap.style.left = px_ + 'px';
+      wrap.style.top  = py_ + 'px';
+      wrap.appendChild(pin.canvas);
+      lane.appendChild(wrap);
+      formation.push({ pin, wrap, px: px_, py: py_ });
+    }
+  }
+
+  function strikeAt(clickX, clickY) {
+    let nearest = null, bestD = Infinity;
+    for (const p of formation) {
+      const d = (p.px - clickX) ** 2 + (p.py - clickY) ** 2;
+      if (d < bestD && p.pin.state === 'idle') { bestD = d; nearest = p; }
+    }
+    if (!nearest) return;
+    const dx = nearest.px - clickX;
+    const dy = nearest.py - clickY;
+    nearest.pin.knock(dx, dy);
+    const deg = ANGLES[nearest.pin.angleIndex].degrees;
+    hud.textContent = 'STRIKE → angle ' + deg + '°  (idx ' + nearest.pin.angleIndex + ')';
+  }
+
+  lane.addEventListener('click', (e) => {
+    const rect = lane.getBoundingClientRect();
+    strikeAt(e.clientX - rect.left, e.clientY - rect.top);
+  });
+  lane.addEventListener('dblclick', () => {
+    for (const p of formation) p.pin.reset();
+    hud.textContent = 'reset · click to strike';
+  });
+
+  document.getElementById('randomStrike').addEventListener('click', () => {
+    const idle = formation.filter(p => p.pin.state === 'idle');
+    if (!idle.length) return;
+    const target = idle[Math.floor(Math.random() * idle.length)];
+    target.pin.knockIndex(Math.floor(Math.random() * ANGLE_COUNT));
+    const deg = ANGLES[target.pin.angleIndex].degrees;
+    hud.textContent = 'RANDOM → angle ' + deg + '°  (idx ' + target.pin.angleIndex + ')';
+  });
+  document.getElementById('resetLane').addEventListener('click', () => {
+    for (const p of formation) p.pin.reset();
+    hud.textContent = 'reset · click to strike';
+  });
+}
+</script>
+
+</body>
+</html>
