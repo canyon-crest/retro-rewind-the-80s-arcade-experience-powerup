@@ -462,7 +462,7 @@ q5.update = function () {
             
             angle = 0;
             power = 6;
-            rawPowerSin = 0;
+            rawPowerSin = 0;    
             
             if (ball.ani) {
                 ball.ani.frameDelay = 8;
@@ -471,3 +471,4 @@ q5.update = function () {
     }
     camera.off();
 };
+``
